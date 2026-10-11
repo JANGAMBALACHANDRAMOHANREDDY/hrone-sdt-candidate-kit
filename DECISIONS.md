@@ -1,0 +1,7 @@
+# DECISIONS.md
+
+1. **Indexes.** A unique employee-code index serves identity and joins; department/code and department/join-date indexes support filtered lists and eligible headcount, while join-date/department serves unfiltered summaries. Attendance has unique employee/date for one record per shift day, employee/date for month reads, employee/punch-in for latest open shifts, date/employee for list order, date/status/employee and status/date/employee for filtered lists, and date/late-minutes for ranking. The compound status index replaces a redundant standalone status index.
+2. **Punch-in race.** Both requests can read the employee, but a unique attendance natural-key index arbitrates insertion. One insert returns 201; MongoDB rejects the other as a duplicate and the API returns 409. The check is not used to guarantee uniqueness.
+3. **Ties.** `$rank` ranks total late minutes before filtering by `rank <= limit`. All employees tied at the cutoff are returned; the next rank is skipped. Employee code sorts tied rows.
+4. **Headcount.** Summary begins with employees who joined by month-end and left-joins their month logs. Employees with no logs still contribute one; later joiners are excluded.
+5. **100x data.** I would measure workload and index size, then partition attendance by date or shard it. Today, compound indexes and bounded lookups avoid loading the collection into application memory.
